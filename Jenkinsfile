@@ -38,19 +38,26 @@ pipeline {
 
         stage('Login To ECR') {
             steps {
-                sh '''
-                aws ecr get-login-password --region us-east-1 | \
-                docker login --username AWS \
-                --password-stdin 899867382718.dkr.ecr.us-east-1.amazonaws.com
-                '''
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-creds']
+                ]) {
+                    sh '''
+                    aws sts get-caller-identity
+
+                    aws ecr get-login-password --region ${AWS_REGION} | \
+                    docker login --username AWS \
+                    --password-stdin ${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com
+                    '''
+                }
             }
         }
 
         stage('Push Backend Image') {
             steps {
                 sh '''
-                docker tag inventory-backend:${BUILD_NUMBER} $BACKEND_REPO:latest
-                docker push $BACKEND_REPO:latest
+                docker tag inventory-backend:${BUILD_NUMBER} ${BACKEND_REPO}:latest
+                docker push ${BACKEND_REPO}:latest
                 '''
             }
         }
@@ -58,8 +65,8 @@ pipeline {
         stage('Push Frontend Image') {
             steps {
                 sh '''
-                docker tag inventory-frontend:${BUILD_NUMBER} $FRONTEND_REPO:latest
-                docker push $FRONTEND_REPO:latest
+                docker tag inventory-frontend:${BUILD_NUMBER} ${FRONTEND_REPO}:latest
+                docker push ${FRONTEND_REPO}:latest
                 '''
             }
         }
