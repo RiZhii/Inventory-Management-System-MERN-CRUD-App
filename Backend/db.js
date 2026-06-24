@@ -1,5 +1,5 @@
 const mongoose = require('mongoose')
-const mongoURI = "mongodb://10.0.4.183:27017/inventorydb";
+const mongoURI = "mongodb://10.0.4.183:27017/inventory_staging";
 
 const connectToMongo = async () => {
   try {

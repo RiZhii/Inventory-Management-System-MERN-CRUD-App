@@ -78,50 +78,61 @@ pipeline {
                     def SERVER_IP = ""
                     def SSH_CRED = ""
 
-                    if (env.BRANCH_NAME == "develop") {
-                        SERVER_IP = "10.0.3.243"
-                        SSH_CRED = "dev-server-key"
-                    }
-                    else if (env.BRANCH_NAME == "staging") {
-                        SERVER_IP = "10.0.4.166"
-                        SSH_CRED = "staging-server-key"
-                    }
-                    else if (env.BRANCH_NAME == "prod") {
-                        SERVER_IP = "10.0.5.238"
-                        SSH_CRED = "prod-server-key"
-                    }
+                    withCredentials([
+                        string(credentialsId: 'dev-server-ip', variable: 'DEV_IP'),
+                        string(credentialsId: 'staging-server-ip', variable: 'STAGING_IP'),
+                        string(credentialsId: 'prod-server-ip', variable: 'PROD_IP')
+                    ]) {
 
-                    sshagent([SSH_CRED]) {
+                        if (env.BRANCH_NAME == "develop") {
+                            SERVER_IP = DEV_IP
+                            SSH_CRED = "dev-server-key"
+                        }
+                        else if (env.BRANCH_NAME == "staging") {
+                            SERVER_IP = STAGING_IP
+                            SSH_CRED = "staging-server-key"
+                        }
+                        else if (env.BRANCH_NAME == "prod") {
+                            SERVER_IP = PROD_IP
+                            SSH_CRED = "prod-server-key"
+                        }
 
-                        sh """
-                        ssh -o StrictHostKeyChecking=no ubuntu@${SERVER_IP} '
+                        sshagent([SSH_CRED]) {
 
-                        aws ecr get-login-password --region us-east-1 | \
-                        docker login --username AWS \
-                        --password-stdin ${AWS_ACCOUNT}.dkr.ecr.us-east-1.amazonaws.com
+                            sh """
+                            ssh -o StrictHostKeyChecking=no ubuntu@${SERVER_IP} '
 
-                        docker pull ${BACKEND_REPO}:latest
-                        docker pull ${FRONTEND_REPO}:latest
+                            aws ecr get-login-password --region ${AWS_REGION} | \
+                            docker login --username AWS \
+                            --password-stdin ${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com
 
-                        docker stop inventory-backend || true
-                        docker rm inventory-backend || true
+                            docker pull ${BACKEND_REPO}:latest
+                            docker pull ${FRONTEND_REPO}:latest
 
-                        docker stop inventory-frontend || true
-                        docker rm inventory-frontend || true
+                            docker network create inventory-network || true
 
-                        docker run -d \
-                        --name inventory-backend \
-                        -p 3001:3001 \
-                        ${BACKEND_REPO}:latest
+                            docker stop inventory-backend || true
+                            docker rm inventory-backend || true
 
-                        docker run -d \
-                        --name inventory-frontend \
-                        -p 80:80 \
-                        ${FRONTEND_REPO}:latest
+                            docker stop inventory-frontend || true
+                            docker rm inventory-frontend || true
 
-                        docker ps
-                        '
-                        """
+                            docker run -d \
+                            --network inventory-network \
+                            --name inventory-backend \
+                            -p 3001:3001 \
+                            ${BACKEND_REPO}:latest
+
+                            docker run -d \
+                            --network inventory-network \
+                            --name inventory-frontend \
+                            -p 80:80 \
+                            ${FRONTEND_REPO}:latest
+
+                            docker ps
+                            '
+                            """
+                        }
                     }
                 }
             }
