@@ -109,6 +109,8 @@ pipeline {
                             docker pull ${BACKEND_REPO}:latest
                             docker pull ${FRONTEND_REPO}:latest
 
+                            docker network create inventory-network || true
+
                             docker stop inventory-backend || true
                             docker rm inventory-backend || true
 
