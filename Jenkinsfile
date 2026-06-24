@@ -118,11 +118,13 @@ pipeline {
                             docker rm inventory-frontend || true
 
                             docker run -d \
+                            --network inventory-network \
                             --name inventory-backend \
                             -p 3001:3001 \
                             ${BACKEND_REPO}:latest
 
                             docker run -d \
+                            --network inventory-network \
                             --name inventory-frontend \
                             -p 80:80 \
                             ${FRONTEND_REPO}:latest
